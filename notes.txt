@@ -1,0 +1,43 @@
+
+# Fir Home API
+
+
+# Wav Runner Endpoints
+1. Submit url for processing; have button react to successful post?
+2. Download file, while on page
+3. Fetch all available files
+
+
+1. Submit Url for processing
+-------------------->
+- submit url; previously validated
+- kick off job; tying file to url 
+- background process; download file + save to disk; url+file+date+id+title
+- figure out how to have button react to successful post
+/////////
+-- url comes in
+-- get video id from youtube link
+-- fetch video title 
+-- create db record w/ --> url, id, title, 
+-- run command to output file @ known directory w/ given ID
+-- done 
+
+
+2. Download file
+---------------> 
+- while on wav runner page; click button to download file 
+- button makes get request to api; sending ID of item to be fetched
+- dl happens automatically; 
+/////////
+-- ID of song is sent via get request
+-- download begins
+-- done 
+
+3. Fetch available files
+-------------------> 
+- get list of available downloads from server
+- return as list; yt_url, title, id, date 
+- id used to dl file 
+/////////
+-- get request sent to api 
+-- api returns list w/ --> title, yt_link, add_date, ID (button embed) 
