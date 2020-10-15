@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // processWavHandler ... This function kicks off the downloading of a youtube video to wav file.
@@ -21,8 +24,12 @@ func processWavHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// debug
+	log.Println("/processWavHandler called -- " + r.Host)
+
 	// get url
 	videoURL := r.FormValue("url")
+	log.Printf("YT URL: %s", videoURL)
 
 	// extract youtube id + name
 	cmd := exec.Command(`youtube-dl`, `--get-filename`, `-o`, `%(id)s|%(title)s`, videoURL)
@@ -99,10 +106,10 @@ func downloadWavHandler(w http.ResponseWriter, r *http.Request) {
 
 // wavListItem ... returned to UI upon page load.
 type wavListItem struct {
-	ID     int
-	Name   string
-	URL    string
-	DlDate string
+	ID     int    `json:"id"`
+	Name   string `json:"wav_name"`
+	URL    string `json:"youtube_url"`
+	DlDate string `json:"insert_dt"`
 }
 
 func getWavListHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,9 +118,11 @@ func getWavListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/getwavlist called -- " + r.Host)
 	// fetch from db
 	var WavList []wavListItem
-	rows, err := db.Query("Select id, wav_name, youtube_url, insert_dt from waves;")
+
+	rows, err := db.Query("Select id, wave_name, youtube_url, insert_dt from waves;")
 	if err != nil {
 		log.Println("Failed to retrieve list of waves: %v", err)
 		http.Error(w, "Failed to retrieve wav list!", http.StatusNotFound)
@@ -126,6 +135,11 @@ func getWavListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return json marshalled list
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(WavList)
 
 	return
 }
@@ -135,16 +149,19 @@ var db *sql.DB
 // initDb starts the database connection for the application.
 // Initializes the global db variable.
 func initDb() {
-	db, err := sql.Open("sqlite3", "./waverunner.db")
+	database, err := sql.Open("sqlite3", "./waverunner.db")
 	if err != nil {
-		log.Fatal("Failed to open sqlite3 database: %v", err)
+		panic("Failed to open sqlite3 database!")
 	}
-	statement, err := db.Prepare("CREATE TABLE IF NOT EXISTS waves (id INTEGER PRIMARY KEY, youtube_url NOT NULL TEXT, youtube_id NOT NULL TEXT, wave_name NOT NULL TEXT, insert_dt TEXT DEFAULT CURRENT_TIMESTAMP)")
-	if err != nil {
-		log.Fatal("Failed to initialize waves table: %v", err)
-	}
-	statement.Exec()
-	statement.Close()
+
+	// statement, err := db.Prepare("CREATE TABLE IF NOT EXISTS waves (id INTEGER PRIMARY KEY, youtube_url TEXT NOT NULL, youtube_id TEXT NOT NULL, wave_name TEXT NOT NULL, insert_dt DATETIME DEFAULT CURRENT_TIMESTAMP)")
+	// if err != nil {
+	// 	log.Fatalf("Failed to initialize waves table: %v", err)
+	// }
+	// statement.Exec()
+	// statement.Close()
+
+	db = database // must do this, otherwise db lost when context exists
 }
 
 func main() {
